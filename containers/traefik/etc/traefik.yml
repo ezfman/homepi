@@ -1,0 +1,64 @@
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+entryPoints:
+  http:
+    address: :80
+    http:
+      redirections:
+        entryPoint:
+          to: https
+          scheme: https
+
+  https:
+    address: :443
+    http:
+      tls:
+        certResolver: letsencrypt
+        domains:
+          - main: SUBDOMAIN.duckdns.org
+            sans:
+              - '*.SUBDOMAIN.duckdns.org'
+      middlewares:
+        - securityHeaders@file
+
+providers:
+  providersThrottleDuration: 2s
+
+  file:
+    filename: /etc/traefik/traefik_dynamic.yml
+    watch: true
+
+  docker:
+    watch: true
+    network: proxy
+    defaultRule: "Host(`{{ index .Labels \"com.docker.compose.service\"}}.SUBDOMAIN.duckdns.org`)"
+    swarmModeRefreshSeconds: 15s
+    exposedByDefault: false
+    endpoint: "tcp://dockersocket:2375"
+
+api:
+  dashboard: true
+
+log:
+  filePath: /etc/traefik/traefik.log
+  level: ERROR
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email:  DUCKDNS_EMAIL
+      storage: /etc/traefik/acme.json
+      caServer: https://acme-v02.api.letsencrypt.org/directory
+      dnsChallenge:
+        provider: duckdns
+        resolvers:
+          - "1.1.1.1:53"
+          - "8.8.8.8:53"
+
+experimental:
+  plugins:
+    sablier:
+      moduleName: "github.com/acouvreur/sablier"
+      version: "v1.4.0-beta.5"
